@@ -1,0 +1,91 @@
+networks:
+  regtest_network:
+    external: false
+    name: regtest_network
+
+
+services:
+
+  orchestrator:
+    image: nchain/rnd-prototyping-regtest_orchestrator:v1.4
+    command: ['python3', 'run.py', '--port=9777']
+    # command: ['python3', 'run.py', '--port=9777', '--interval 10', '--approximately']
+    container_name: orchestrator
+    ports:
+      - "9777:9777"
+    environment:
+      - NODE_LIST=node1:18332:18332:8090:8090
+    depends_on:
+      node1:
+        condition: service_healthy
+    networks:
+      - regtest_network
+    
+
+  node1:
+    image: nchain/rnd-prototyping-bitcoin_regtest:v1.7
+    command: ['python3', 'run.py', '--datadir=/app/data', '--port=8090']
+    container_name: node1
+    healthcheck:
+      test: [ "CMD", "./bitcoin-cli",  '--datadir=/app/data', "getinfo" ]
+    ports:
+      - "18332:18332"  # This is the RPC port
+      - "18333:18333"
+      - "28332:28332"
+      - "8090:8090"    # This is the REST API port
+    expose: 
+      - "18332"
+      - "18333"
+      - "28332"
+      - "8090"
+    volumes:
+      # bitcoin-data: store persistent data in a named volume; 
+      # override the configuration file using a bind mount
+      - ./data/bitcoin.conf:/app/data/bitcoin.conf
+      - node1-data:/app/data
+    environment:
+      RPC_URL:       http://localhost:18332
+      RPC_USER:      bitcoin
+      RPC_PASSWORD:  bitcoin
+    networks:
+      - regtest_network
+
+
+  # This will need replacing as not ARM compatible - on hold until UI resource available
+  node-explorer:
+    container_name: explorer
+    image: jwahab/woc-explorer:latest
+    environment:
+      PORT: "8080"
+    expose:
+      - "8080"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    depends_on:
+      - node1
+    networks:
+      - regtest_network
+
+
+  dashboard:
+    container_name: regtest_dashboard
+    image: nchain/rnd-prototyping-regtest_dashboard:v1.3
+    environment:
+      ENVIRONMENT: "deployment"
+      ACCESS_TYPE: "INTERNAL"
+    ports:
+      - "3000:3000"
+    depends_on:
+      node1:
+        condition: service_healthy
+    networks:
+      - regtest_network
+    volumes:
+      - ./dashboard/config.js:/app/public/config.js
+
+
+volumes:
+  node1-data:
+    labels:
+      com.nchain.description: "Bitcoin node 1 data"

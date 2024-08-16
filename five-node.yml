@@ -1,0 +1,202 @@
+networks:
+  regtest_network:
+    external: false
+    name: regtest_network
+
+
+
+services:
+
+  orchestrator:
+    image: nchain/rnd-prototyping-regtest_orchestrator:v1.4
+    command: ['python3', 'run.py', '--port=9777']
+    container_name: orchestrator
+    ports:
+      - "9777:9777"
+    environment:
+      - NODE_LIST=node1:18332:18332:8090:8090,node2:18502:18332:8091:8090,node3:18602:18332:8092:8090,node4:18702:18332:8093:8090,node5:18802:18332:8094:8090
+    depends_on:
+      node1:
+        condition: service_healthy
+      node2:
+        condition: service_healthy
+      node3:
+        condition: service_healthy
+      node4:
+        condition: service_healthy
+      node5:
+        condition: service_healthy
+    networks:
+      - regtest_network
+
+  node1:
+    image: nchain/rnd-prototyping-bitcoin_regtest:v1.7
+    command: ['python3', 'run.py', '--datadir=/app/data', '--port=8090']
+    container_name: node1
+    healthcheck:
+      test: [ "CMD", "./bitcoin-cli",  '--datadir=/app/data', "getinfo" ]
+    ports:
+      - "18332:18332"
+      - "8090:8090"
+    expose: 
+      - "18332"
+      - "18333"
+      - "8090"
+    volumes:
+      - node1-data:/app/data
+      - ./data/bitcoin.conf:/app/data/bitcoin.conf
+    environment:
+      RPC_URL:       http://localhost:18332
+      RPC_USER:      bitcoin
+      RPC_PASSWORD:  bitcoin
+    networks:
+      - regtest_network
+
+  node2:
+    image: nchain/rnd-prototyping-bitcoin_regtest:v1.7
+    command: ['python3', 'run.py', '--datadir=/app/data', '--port=8090']
+    container_name: node2
+    healthcheck:
+      test: [ "CMD", "./bitcoin-cli",  '--datadir=/app/data', "getinfo" ]
+    ports:
+      - "18502:18332"
+      - "8091:8090"
+    expose: 
+      - "18332"
+      - "18333"
+      - "8090"
+    volumes:
+      - node2-data:/app/data
+      - ./data/bitcoin.conf:/app/data/bitcoin.conf
+    environment:
+      RPC_URL:       http://localhost:18332
+      RPC_USER:      bitcoin
+      RPC_PASSWORD:  bitcoin
+    networks:
+      - regtest_network
+
+  node3:
+    image: nchain/rnd-prototyping-bitcoin_regtest:v1.7
+    command: ['python3', 'run.py', '--datadir=/app/data', '--port=8090']
+    container_name: node3
+    healthcheck:
+      test: [ "CMD", "./bitcoin-cli",  '--datadir=/app/data', "getinfo" ]
+    ports:
+      - "18602:18332"
+      - "8092:8090"
+    expose: 
+      - "18332"
+      - "18333"
+      - "8090"
+    volumes:
+      - node3-data:/app/data
+      - ./data/bitcoin.conf:/app/data/bitcoin.conf
+    environment:
+      RPC_URL:       http://localhost:18332
+      RPC_USER:      bitcoin
+      RPC_PASSWORD:  bitcoin
+    networks:
+      - regtest_network
+
+  node4:
+    image: nchain/rnd-prototyping-bitcoin_regtest:v1.7
+    command: ['python3', 'run.py', '--datadir=/app/data', '--port=8090']
+    container_name: node4
+    healthcheck:
+      test: [ "CMD", "./bitcoin-cli",  '--datadir=/app/data', "getinfo" ]
+    ports:
+      - "18702:18332"
+      - "8093:8090"
+    expose: 
+      - "18332"
+      - "18333"
+      - "8090"
+    volumes:
+      - node4-data:/app/data
+      - ./data/bitcoin.conf:/app/data/bitcoin.conf
+    environment:
+      RPC_URL:       http://localhost:18332
+      RPC_USER:      bitcoin
+      RPC_PASSWORD:  bitcoin
+    networks:
+      - regtest_network
+
+  node5:
+    image: nchain/rnd-prototyping-bitcoin_regtest:v1.7
+    command: ['python3', 'run.py', '--datadir=/app/data', '--port=8090']
+    container_name: node5
+    healthcheck:
+      test: [ "CMD", "./bitcoin-cli",  '--datadir=/app/data', "getinfo" ]
+    ports:
+      - "18802:18332"
+      - "8094:8090"
+    expose: 
+      - "18332"
+      - "18333"
+      - "8090"
+    volumes:
+      - node5-data:/app/data  
+      - ./data/bitcoin.conf:/app/data/bitcoin.conf
+    environment:
+      RPC_URL:       http://localhost:18332
+      RPC_USER:      bitcoin
+      RPC_PASSWORD:  bitcoin
+    networks:
+      - regtest_network
+
+  # This will need replacing as not ARM compatible - on hold until UI resource available
+  node-explorer:
+    container_name: explorer
+    image: jwahab/woc-explorer:latest
+    environment:
+      PORT: "8080"
+    expose:
+      - "8080"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    depends_on:
+      - node1
+    networks:
+      - regtest_network
+
+  dashboard:
+    container_name: regtest_dashboard
+    image: nchain/rnd-prototyping-regtest_dashboard:v1.3
+    environment:
+      ENVIRONMENT: "deployment"
+      ACCESS_TYPE: "INTERNAL"
+    ports:
+      - "3000:3000"
+    depends_on:
+      node1:
+        condition: service_healthy
+      node2:
+        condition: service_healthy
+      node3:
+        condition: service_healthy
+      node4:
+        condition: service_healthy
+      node5:
+        condition: service_healthy
+    networks:
+      - regtest_network
+    volumes:
+      - ./dashboard/config.js:/app/public/config.js
+
+volumes:
+  node1-data:
+    labels:
+      com.nchain.description: "Bitcoin node 1 data"
+  node2-data:
+    labels:
+      com.nchain.description: "Bitcoin node 2 data"
+  node3-data:
+    labels:
+      com.nchain.description: "Bitcoin node 3 data" 
+  node4-data:
+    labels:
+      com.nchain.description: "Bitcoin node 4 data"
+  node5-data:
+    labels:
+      com.nchain.description: "Bitcoin node 5 data"
